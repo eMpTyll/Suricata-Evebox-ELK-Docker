@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  suricata:
+    image: jasonish/suricata:latest
+    network_mode: host
+    command: -i ens33
+    cap_add:
+      - NET_ADMIN
+      - SYS_NICE
+    privileged: true
+    volumes:
+      - ./suricata/config:/etc/suricata
+      - ./suricata/rules:/var/lib/suricata/rules
+      - ./suricata/logs:/var/log/suricata
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.14.1
+    networks:
+      - elk_default
+    volumes:
+      - ./logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - ./suricata/logs:/var/log/suricata:ro
+      - ./logstash/sincedbs:/var/cache/logstash/sincedbs
+      - ./logstash/elasticsearch8-template.json:/etc/logstash/elasticsearch8-template.json:ro
+    environment:
+      - LS_JAVA_OPTS=-Xmx256m -Xms256m
+    depends_on:
+      - suricata
+
+  evebox:
+    image: jasonish/evebox:latest
+    networks:
+      - elk_default
+    ports:
+      - "5636:5636"
+    environment:
+      - EVEBOX_ELASTICSEARCH_URL=http://172.18.0.2:9200
+    volumes:
+      - ./suricata/logs:/var/log/suricata
+    command: ["evebox", "server", "--host", "0.0.0.0", "--input", "/var/log/suricata/eve.json", "--no-tls"]
+
+networks:
+  elk_default:
+    external: true
+

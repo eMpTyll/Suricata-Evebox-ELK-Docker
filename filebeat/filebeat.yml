@@ -1,0 +1,14 @@
+filebeat.modules:
+  - module: suricata
+    eve:
+      enabled: true
+      var.paths: ["/var/log/suricata/eve.json"]
+
+output.elasticsearch:
+  hosts: ["http://172.18.0.2:9200"]
+  index: "suricata-%{[agent.version]}-%{+yyyy.MM.dd}"
+setup.template.pattern: "suricata-*"
+setup.template.name: "suricata"
+
+setup.kibana:
+  host: "http://172.18.0.3:5601"
